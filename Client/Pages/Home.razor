@@ -1,7 +1,80 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+@using System.Net.Http
+@using System.Net.Http.Json
 
-<h1>Hello, world!</h1>
+@inject HttpClient Http
 
-Welcome to your new app.
+<PageTitle>Hacker News Front Page</PageTitle>
+
+<h1 class="my-5">Top Hacker News</h1>
+
+@if (hnItems !=null  && hnItems.Count > 0)
+{
+    foreach(var item in hnItems)
+    {
+        <div class="row mt-3">
+            <div class="col-12">
+                <a href="@item.url" target="_blank" class="fs-5 fw-bold">@item.title</a>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-auto">
+                <strong>Score:</strong> @item.score
+            </div>
+            <div class="col-auto">
+                <strong>Posted:</strong> @DateTimeOffset.FromUnixTimeSeconds(item.time).ToLocalTime().ToString("M/dd/yyyy h:mm tt")
+            </div>
+            <div class="col-auto">
+                <strong>By:</strong> @item.by
+            </div>
+            <div class="col-auto">
+                <strong>Comments:</strong> @(item.descendants.HasValue ? item.descendants : 0)
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<HNItem>? hnItems;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hnItems = new List<HNItem>();
+
+        var topItems = await Http.GetFromJsonAsync<int[]>("https://hacker-news.firebaseio.com/v0/topstories.json");
+
+        if (topItems != null)
+        {
+            foreach (var id in topItems.Take(20))
+            {
+                var item = await Http.GetFromJsonAsync<HNItem>($"https://hacker-news.firebaseio.com/v0/item/{id}.json");
+                if (item != null)
+                {
+                    hnItems.Add(item);
+                }
+            }
+        }
+
+    }
+
+    public class HNItem
+    {
+        public long id { get; set; }
+        public bool deleted { get; set; }
+        public string? type { get; set; }
+        public long time { get; set; }
+        public string? by { get; set; }
+        public string? text { get; set; }
+        public bool dead { get; set; }
+        public long? parent { get; set; }
+        public long? poll { get; set; }
+        public long[]? kids { get; set; }
+        public string? url { get; set; }
+        public int? score { get; set; }
+        public string? title { get; set; }
+        public long[]? parts { get; set; }
+        public int? descendants { get; set; }
+    }
+}
+
